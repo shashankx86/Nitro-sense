@@ -1,4 +1,4 @@
-obj-m := src/linuwu_sense.o
+obj-m := src/nitro_sense.o
 
 KVER ?= $(shell uname -r)
 KDIR ?= /lib/modules/$(KVER)/build
@@ -12,7 +12,7 @@ endif
 endif
 
 ifneq ($(KERNELRELEASE),)
-obj-m := src/linuwu_sense.o
+obj-m := src/nitro_sense.o
 else
 
 all:
