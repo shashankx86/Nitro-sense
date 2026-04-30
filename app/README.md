@@ -8,6 +8,13 @@ Minimal flat curses UI for controlling supported `linuwu_sense` sysfs nodes.
 python3 app/nitro_sense_tui.py
 ```
 
+Arch package build:
+
+```bash
+cd app
+makepkg -si
+```
+
 ## Controls
 
 - `Up/Down`: select setting

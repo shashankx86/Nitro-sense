@@ -1,0 +1,21 @@
+pkgname=nitro-sense-tui
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Minimal curses UI for Linuwu Sense based Acer controls"
+arch=('x86_64')
+url="https://github.com/0x7375646F/Linuwu-Sense"
+license=('GPL3')
+depends=('python' 'ncurses')
+source=(
+  "nitro_sense_tui.py"
+  "README.md"
+)
+sha256sums=('SKIP' 'SKIP')
+
+package() {
+  install -d "${pkgdir}/usr/bin"
+  install -m 755 "${srcdir}/nitro_sense_tui.py" "${pkgdir}/usr/bin/nitro-sense-tui"
+
+  install -d "${pkgdir}/usr/share/doc/${pkgname}"
+  install -m 644 "${srcdir}/README.md" "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+}

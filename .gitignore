@@ -72,5 +72,7 @@ node_modules/
 venv/
 .env
 *.log
+__pycache__/
+*.pyc
 
 tmp
