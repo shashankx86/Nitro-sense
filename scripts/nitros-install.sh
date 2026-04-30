@@ -10,6 +10,7 @@ MODULE_NAME="nitro_sense"
 SYSFS_BASE="/sys/module/${MODULE_NAME}/drivers/platform:acer-wmi/acer-wmi"
 ACCESS_GROUP="${MODULE_NAME}"
 TMPFILES_CONF="/etc/tmpfiles.d/${MODULE_NAME}.conf"
+PLATFORM_PROFILE_PATH="/sys/firmware/acpi/platform_profile"
 
 usage() {
     cat <<EOF
@@ -110,8 +111,8 @@ configure_non_root_access() {
         echo "      load module first and re-run: sudo systemd-tmpfiles --create ${TMPFILES_CONF}"
     fi
 
-    if [ -e "${PROFILE_PATH:-/sys/firmware/acpi/platform_profile}" ]; then
-        append_tmpfiles_entry "f /sys/firmware/acpi/platform_profile 0664 root ${ACCESS_GROUP}"
+    if [ -e "${PLATFORM_PROFILE_PATH}" ]; then
+        append_tmpfiles_entry "f ${PLATFORM_PROFILE_PATH} 0664 root ${ACCESS_GROUP}"
     fi
 
     systemd-tmpfiles --create "${TMPFILES_CONF}" || true
