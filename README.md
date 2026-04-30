@@ -40,4 +40,5 @@ nitro-sense-tui
 
 - The app auto-detects `predator_sense` or `nitro_sense` sysfs model paths.
 - Some settings are only shown when supported by your model.
-- You need sufficient permissions to write the sysfs control nodes.
+- If you install with `scripts/nitros-install.sh install`, it creates a `nitro_sense` group and applies sysfs permissions so `nitros` can run without `sudo`.
+- After first install, log out/in (or run `newgrp nitro_sense`) so your user picks up the new group.
