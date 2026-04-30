@@ -15,6 +15,7 @@ makepkg -si
 ```
 
 This installs DKMS sources under `/usr/src/linuwu-sense-<version>`.
+It also installs modprobe/modules-load snippets for `linuwu_sense`.
 
 ### 2) Build/install the curses UI
 

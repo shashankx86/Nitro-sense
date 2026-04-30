@@ -10,10 +10,12 @@ makedepends=()
 source=(
   "Makefile"
   "dkms.conf"
+  "linuwu_sense.conf"
+  "linuwu_sense.modules-load"
   "src/linuwu_sense.c"
   "LICENSE"
 )
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   local srcdir_dst="${pkgdir}/usr/src/linuwu-sense-${pkgver}"
@@ -23,4 +25,10 @@ package() {
   install -m 644 "${srcdir}/dkms.conf" "${srcdir_dst}/dkms.conf"
   install -m 644 "${srcdir}/src/linuwu_sense.c" "${srcdir_dst}/src/linuwu_sense.c"
   install -m 644 "${srcdir}/LICENSE" "${srcdir_dst}/LICENSE"
+
+  install -d "${pkgdir}/usr/lib/modprobe.d"
+  install -m 644 "${srcdir}/linuwu_sense.conf" "${pkgdir}/usr/lib/modprobe.d/linuwu_sense.conf"
+
+  install -d "${pkgdir}/usr/lib/modules-load.d"
+  install -m 644 "${srcdir}/linuwu_sense.modules-load" "${pkgdir}/usr/lib/modules-load.d/linuwu_sense.conf"
 }
