@@ -11,6 +11,7 @@
 
  #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
  
+ #include <linux/version.h>
  #include <linux/delay.h>
  #include <linux/kernel.h>
  #include <linux/module.h>
@@ -36,6 +37,10 @@
  #include <linux/unaligned.h>
  #include <linux/bitfield.h>
  #include <linux/bitmap.h>
+
+#ifndef MILLIDEGREE_PER_DEGREE
+#define MILLIDEGREE_PER_DEGREE 1000
+#endif
  
  MODULE_AUTHOR("Carlos Corbacho");
  MODULE_DESCRIPTION("Acer Laptop WMI Extras Driver");
@@ -936,8 +941,12 @@ enum acer_wmi_predator_v4_oc {
      {}
  };
  
- static struct device *platform_profile_device;
- static bool platform_profile_support;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+static struct device *platform_profile_device;
+#else
+static bool platform_profile_handler_registered;
+#endif
+static bool platform_profile_support;
  
  /*
   * The profile used before turbo mode. This variable is needed for
@@ -2313,40 +2322,84 @@ enum acer_wmi_predator_v4_oc {
  
  static acpi_status acer_predator_state_restore(int value);
  
- static acpi_status battery_health_set(u8 function, u8 function_status);
+static acpi_status battery_health_set(u8 function, u8 function_status);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+static const struct platform_profile_ops acer_predator_v4_platform_profile_ops = {
+    .probe = acer_predator_v4_platform_profile_probe,
+    .profile_get = acer_predator_v4_platform_profile_get,
+    .profile_set = acer_predator_v4_platform_profile_set,
+};
+#else
+static int
+acer_predator_v4_handler_profile_get(struct platform_profile_handler *pprof,
+                     enum platform_profile_option *profile)
+{
+    return acer_predator_v4_platform_profile_get(NULL, profile);
+}
+
+static int
+acer_predator_v4_handler_profile_set(struct platform_profile_handler *pprof,
+                     enum platform_profile_option profile)
+{
+    return acer_predator_v4_platform_profile_set(NULL, profile);
+}
+
+static unsigned long acer_predator_v4_profile_classes;
+
+static struct platform_profile_handler acer_predator_v4_platform_profile_handler = {
+    .profile_get = acer_predator_v4_handler_profile_get,
+    .profile_set = acer_predator_v4_handler_profile_set,
+    .classes = &acer_predator_v4_profile_classes,
+};
+#endif
  
- static const struct platform_profile_ops acer_predator_v4_platform_profile_ops = {
-     .probe = acer_predator_v4_platform_profile_probe,
-     .profile_get = acer_predator_v4_platform_profile_get,
-     .profile_set = acer_predator_v4_platform_profile_set,
- };
- 
- static int acer_platform_profile_setup(struct platform_device *pdev)
- {
-     const int max_retries = 10;
-     int delay_ms = 100;
-     if (!quirks->predator_v4 && !quirks->nitro_sense && !quirks->nitro_v4)
-         return 0;
-     for (int attempt = 1; attempt <= max_retries; attempt++) {
-         platform_profile_device = devm_platform_profile_register(
-             &pdev->dev, "acer-wmi", NULL, &acer_predator_v4_platform_profile_ops);
-         if (!IS_ERR(platform_profile_device)) {
-             platform_profile_support = true;
-             pr_info("Platform profile registered successfully (attempt %d)\n", attempt);
-             return 0;
-         }
-         pr_warn("Platform profile registration failed (attempt %d/%d), error: %ld\n",
-                 attempt, max_retries, PTR_ERR(platform_profile_device));
-         if (attempt < max_retries) {
-             msleep(delay_ms);
-             delay_ms = min(delay_ms * 2, 1000);
-         }
-     }
-     pr_warn("Platform profile setup failed. Continuing to load without profile support.\n");
-     platform_profile_support = false; /* Disable platform profile support if unavailable. */
-     
-     return 0;
- }
+static int acer_platform_profile_setup(struct platform_device *pdev)
+{
+    const int max_retries = 10;
+    int delay_ms = 100;
+    if (!quirks->predator_v4 && !quirks->nitro_sense && !quirks->nitro_v4)
+        return 0;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+    for (int attempt = 1; attempt <= max_retries; attempt++) {
+        platform_profile_device = devm_platform_profile_register(
+            &pdev->dev, "acer-wmi", NULL, &acer_predator_v4_platform_profile_ops);
+        if (!IS_ERR(platform_profile_device)) {
+            platform_profile_support = true;
+            pr_info("Platform profile registered successfully (attempt %d)\n", attempt);
+            return 0;
+        }
+        pr_warn("Platform profile registration failed (attempt %d/%d), error: %ld\n",
+                attempt, max_retries, PTR_ERR(platform_profile_device));
+        if (attempt < max_retries) {
+            msleep(delay_ms);
+            delay_ms = min(delay_ms * 2, 1000);
+        }
+    }
+#else
+    acer_predator_v4_profile_classes = 0;
+    acer_predator_v4_platform_profile_probe(NULL, &acer_predator_v4_profile_classes);
+    for (int attempt = 1; attempt <= max_retries; attempt++) {
+        int err = platform_profile_register(&acer_predator_v4_platform_profile_handler);
+        if (err == 0) {
+            platform_profile_handler_registered = true;
+            platform_profile_support = true;
+            pr_info("Platform profile registered successfully (attempt %d)\n", attempt);
+            return 0;
+        }
+        pr_warn("Platform profile registration failed (attempt %d/%d), error: %d\n",
+                attempt, max_retries, err);
+        if (attempt < max_retries) {
+            msleep(delay_ms);
+            delay_ms = min(delay_ms * 2, 1000);
+        }
+    }
+#endif
+    pr_warn("Platform profile setup failed. Continuing to load without profile support.\n");
+    platform_profile_support = false;
+
+    return 0;
+}
  
  static int acer_thermal_profile_change(void)
  {
@@ -2423,7 +2476,11 @@ enum acer_wmi_predator_v4_oc {
          if (tp != acer_predator_v4_max_perf)
              last_non_turbo_profile = tp;
  
-         platform_profile_notify(platform_profile_device);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+          platform_profile_notify(platform_profile_device);
+#else
+          platform_profile_notify();
+#endif
      }
  
      return 0;
@@ -4175,13 +4232,18 @@ enum acer_wmi_predator_v4_oc {
          sysfs_remove_group(&device->dev.kobj, &nitro_sense_v4_attr_group);
          acer_predator_state_save();
      }
-     if(quirks->four_zone_kb){
-         sysfs_remove_group(&device->dev.kobj, &four_zoned_kb_attr_group);
-         four_zone_kb_state_save();
-     }
- 
-     acer_rfkill_exit();
- }
+    if(quirks->four_zone_kb){
+        sysfs_remove_group(&device->dev.kobj, &four_zoned_kb_attr_group);
+        four_zone_kb_state_save();
+    }
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
+    if (platform_profile_handler_registered)
+        platform_profile_unregister();
+#endif
+
+    acer_rfkill_exit();
+}
  
  #ifdef CONFIG_PM_SLEEP
  static int acer_suspend(struct device *dev)
