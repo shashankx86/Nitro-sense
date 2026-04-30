@@ -15,19 +15,13 @@ makepkg -si
 ```
 
 This installs DKMS sources under `/usr/src/nitro-sense-<version>`.
-It also installs modprobe/modules-load snippets for `nitro_sense`.
+It also installs modprobe/modules-load snippets for `nitro_sense`, loads the module after install, and grants the exposed sysfs controls to your current primary group so the UI can run immediately without `sudo`.
 
 ### 2) Build/install the curses UI
 
 ```bash
 cd app
 makepkg -si
-```
-
-### 3) Load module
-
-```bash
-sudo modprobe nitro_sense
 ```
 
 ## Run UI
@@ -42,3 +36,4 @@ nitro-sense-tui
 - Some settings are only shown when supported by your model.
 - If you install with `scripts/nitros-install.sh install`, it creates a `nitro_sense` group and applies sysfs permissions so `nitros` can run without `sudo`.
 - After first install, log out/in (or run `newgrp nitro_sense`) so your user picks up the new group.
+- If you install the packaged driver with `cd driver && makepkg -si`, no extra group refresh is needed. The package grants access to your existing primary group and reapplies it on boot.

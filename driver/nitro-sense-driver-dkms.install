@@ -1,0 +1,4 @@
+post_remove() {
+  rm -f /etc/nitro-sense/access-group
+  rmdir /etc/nitro-sense 2>/dev/null || true
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Apply Nitro Sense sysfs permissions
+After=systemd-modules-load.service
+ConditionPathExists=/etc/nitro-sense/access-group
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/nitro-sense/nitro-sense-permissions apply
+
+[Install]
+WantedBy=sysinit.target

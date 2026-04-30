@@ -34,3 +34,5 @@ The package also installs:
 
 - `/usr/lib/modprobe.d/nitro_sense.conf` to blacklist `acer_wmi`
 - `/usr/lib/modules-load.d/nitro_sense.conf` to auto-load `nitro_sense`
+- a post-transaction pacman hook that loads `nitro_sense` after install/upgrade
+- a boot-time service that reapplies sysfs permissions to the installing user's primary group

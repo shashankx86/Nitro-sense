@@ -1,0 +1,173 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MODULE_NAME="nitro_sense"
+SYSFS_BASE="/sys/module/${MODULE_NAME}/drivers/platform:acer-wmi/acer-wmi"
+STATE_DIR="/etc/nitro-sense"
+ACCESS_GROUP_FILE="${STATE_DIR}/access-group"
+PLATFORM_PROFILE_PATH="/sys/firmware/acpi/platform_profile"
+
+log() {
+    printf '%s\n' "$*"
+}
+
+warn() {
+    printf '%s\n' "$*" >&2
+}
+
+detect_target_user() {
+    local user=""
+
+    if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
+        user="${SUDO_USER}"
+    elif [ -n "${PKEXEC_UID:-}" ]; then
+        user="$(id -nu "${PKEXEC_UID}" 2>/dev/null || true)"
+    else
+        user="$(logname 2>/dev/null || true)"
+        if [ "${user}" = "root" ]; then
+            user=""
+        fi
+    fi
+
+    printf '%s\n' "${user}"
+}
+
+group_for_user() {
+    local user="$1"
+    id -gn "${user}"
+}
+
+store_access_group() {
+    local group="$1"
+    install -d -m 755 "${STATE_DIR}"
+    printf '%s\n' "${group}" > "${ACCESS_GROUP_FILE}"
+    chmod 644 "${ACCESS_GROUP_FILE}"
+}
+
+load_access_group() {
+    if [ -r "${ACCESS_GROUP_FILE}" ]; then
+        head -n 1 "${ACCESS_GROUP_FILE}"
+    fi
+}
+
+wait_for_sysfs() {
+    local tries=20
+
+    while [ "${tries}" -gt 0 ]; do
+        if [ -d "${SYSFS_BASE}" ]; then
+            return 0
+        fi
+        sleep 0.2
+        tries=$((tries - 1))
+    done
+
+    return 1
+}
+
+apply_path_permissions() {
+    local path="$1"
+    local mode="$2"
+    local group="$3"
+
+    if [ ! -e "${path}" ]; then
+        return 0
+    fi
+
+    chgrp "${group}" "${path}" || warn "nitro-sense: warning: failed to chgrp ${path}"
+    chmod "${mode}" "${path}" || warn "nitro-sense: warning: failed to chmod ${path}"
+}
+
+apply_model_permissions() {
+    local model_path="$1"
+    local group="$2"
+    local field
+
+    for field in \
+        backlight_timeout \
+        battery_calibration \
+        battery_limiter \
+        boot_animation_sound \
+        fan_speed \
+        lcd_override \
+        usb_charging
+    do
+        apply_path_permissions "${model_path}/${field}" 0660 "${group}"
+    done
+}
+
+apply_keyboard_permissions() {
+    local group="$1"
+    local field
+
+    for field in four_zone_mode per_zone_mode; do
+        apply_path_permissions "${SYSFS_BASE}/four_zoned_kb/${field}" 0660 "${group}"
+    done
+}
+
+apply_permissions() {
+    local group="$1"
+    local model_path=""
+
+    modprobe -q "${MODULE_NAME}" 2>/dev/null || true
+
+    apply_path_permissions "${PLATFORM_PROFILE_PATH}" 0664 "${group}"
+
+    if ! wait_for_sysfs; then
+        warn "nitro-sense: warning: ${MODULE_NAME} sysfs path not available yet"
+        return 0
+    fi
+
+    if [ -d "${SYSFS_BASE}/predator_sense" ]; then
+        model_path="${SYSFS_BASE}/predator_sense"
+    elif [ -d "${SYSFS_BASE}/nitro_sense" ]; then
+        model_path="${SYSFS_BASE}/nitro_sense"
+    fi
+
+    if [ -n "${model_path}" ]; then
+        apply_model_permissions "${model_path}" "${group}"
+    fi
+
+    apply_keyboard_permissions "${group}"
+}
+
+cmd_apply() {
+    local group="${1:-}"
+    local user=""
+
+    if [ -z "${group}" ]; then
+        user="$(detect_target_user)"
+        if [ -n "${user}" ]; then
+            group="$(group_for_user "${user}")"
+            store_access_group "${group}"
+            log "nitro-sense: granting hardware access to group '${group}'"
+        else
+            group="$(load_access_group)"
+        fi
+    fi
+
+    if [ -z "${group}" ]; then
+        warn "nitro-sense: warning: unable to detect a non-root user to grant access"
+        return 0
+    fi
+
+    if ! getent group "${group}" >/dev/null; then
+        warn "nitro-sense: warning: group '${group}' does not exist"
+        return 0
+    fi
+
+    apply_permissions "${group}"
+}
+
+case "${1:-apply}" in
+    apply)
+        cmd_apply "${2:-}"
+        ;;
+    cleanup)
+        rm -f "${ACCESS_GROUP_FILE}"
+        rmdir "${STATE_DIR}" 2>/dev/null || true
+        ;;
+    *)
+        warn "Usage: $(basename "$0") [apply [group]|cleanup]"
+        exit 1
+        ;;
+esac

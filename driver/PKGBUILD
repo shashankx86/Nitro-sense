@@ -1,21 +1,25 @@
 pkgname=nitro-sense-driver-dkms
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc="DKMS package for Nitro Sense based Acer Nitro/Predator driver"
 arch=('x86_64')
 url="https://github.com/0x7375646F/Nitro-Sense"
 license=('GPL3')
 depends=('dkms')
+install="${pkgname}.install"
 makedepends=()
 source=(
   "Makefile"
   "dkms.conf"
   "nitro_sense.conf"
   "nitro_sense.modules-load"
-  "src/nitro_sense.c"
+  "nitro-sense-driver-dkms.install"
+  "nitro-sense-permissions"
+  "nitro-sense-permissions.service"
+  "80-nitro-sense-permissions.hook"
   "LICENSE"
 )
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   local srcdir_dst="${pkgdir}/usr/src/nitro-sense-${pkgver}"
@@ -23,7 +27,7 @@ package() {
   install -d "${srcdir_dst}/src"
   install -m 644 "${srcdir}/Makefile" "${srcdir_dst}/Makefile"
   install -m 644 "${srcdir}/dkms.conf" "${srcdir_dst}/dkms.conf"
-  install -m 644 "${srcdir}/src/nitro_sense.c" "${srcdir_dst}/src/nitro_sense.c"
+  install -m 644 "${startdir}/src/nitro_sense.c" "${srcdir_dst}/src/nitro_sense.c"
   install -m 644 "${srcdir}/LICENSE" "${srcdir_dst}/LICENSE"
 
   install -d "${pkgdir}/usr/lib/modprobe.d"
@@ -31,4 +35,15 @@ package() {
 
   install -d "${pkgdir}/usr/lib/modules-load.d"
   install -m 644 "${srcdir}/nitro_sense.modules-load" "${pkgdir}/usr/lib/modules-load.d/nitro_sense.conf"
+
+  install -d "${pkgdir}/usr/lib/nitro-sense"
+  install -m 755 "${srcdir}/nitro-sense-permissions" "${pkgdir}/usr/lib/nitro-sense/nitro-sense-permissions"
+
+  install -d "${pkgdir}/usr/lib/systemd/system"
+  install -m 644 "${srcdir}/nitro-sense-permissions.service" "${pkgdir}/usr/lib/systemd/system/nitro-sense-permissions.service"
+  install -d "${pkgdir}/usr/lib/systemd/system/sysinit.target.wants"
+  ln -s ../nitro-sense-permissions.service "${pkgdir}/usr/lib/systemd/system/sysinit.target.wants/nitro-sense-permissions.service"
+
+  install -d "${pkgdir}/usr/share/libalpm/hooks"
+  install -m 644 "${srcdir}/80-nitro-sense-permissions.hook" "${pkgdir}/usr/share/libalpm/hooks/80-nitro-sense-permissions.hook"
 }

@@ -1,0 +1,12 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = nitro-sense-driver-dkms
+
+[Action]
+Description = Apply Nitro Sense runtime permissions
+Depends = bash
+Depends = kmod
+When = PostTransaction
+Exec = /usr/lib/nitro-sense/nitro-sense-permissions apply
