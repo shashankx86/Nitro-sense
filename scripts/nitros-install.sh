@@ -14,11 +14,11 @@ PLATFORM_PROFILE_PATH="/sys/firmware/acpi/platform_profile"
 
 usage() {
     cat <<EOF
-Usage: $(basename "$0") <command>
+Usage: $(basename "$0") <command> [all|app|driver]
 
 Commands:
-  install     Install driver and TUI to ${INSTALL_DIR} and create 'nitros' command
-  uninstall   Remove installed files and 'nitros' command
+  install     Install all components by default, or only app/driver
+  uninstall   Remove all components by default, or only app/driver
   launch      Launch the nitro-sense TUI (requires install first)
   help        Show this help message
 
@@ -26,7 +26,26 @@ Install actions:
   - Copies driver source to ${INSTALL_DIR}/driver and builds/installs kernel module
   - Copies TUI app to ${INSTALL_DIR}/app
   - Creates symlink ${BIN_DIR}/nitros -> ${INSTALL_DIR}/app/nitro_sense_tui.py
+
+Examples:
+  sudo $(basename "$0") install
+  sudo $(basename "$0") install app
+  sudo $(basename "$0") uninstall driver
 EOF
+}
+
+component_name() {
+    local component="${1:-all}"
+
+    case "${component}" in
+        all|app|driver)
+            printf '%s\n' "${component}"
+            ;;
+        *)
+            echo "Error: Unknown component '${component}'. Use one of: all, app, driver." >&2
+            exit 1
+            ;;
+    esac
 }
 
 require_root() {
@@ -137,69 +156,118 @@ cleanup_non_root_access() {
     fi
 }
 
-cmd_install() {
-    require_root "$@"
+cleanup_install_dir() {
+    rmdir "${INSTALL_DIR}/app" 2>/dev/null || true
+    rmdir "${INSTALL_DIR}/driver" 2>/dev/null || true
+    rmdir "${INSTALL_DIR}" 2>/dev/null || true
+}
 
-    echo "==> Installing nitro-sense to ${INSTALL_DIR}..."
-
-    # Create install directories
+install_driver() {
     mkdir -p "${INSTALL_DIR}/driver"
-    mkdir -p "${INSTALL_DIR}/app"
 
-    # Copy driver source
     echo "==> Copying driver source..."
     cp -r "${DRIVER_DIR}/." "${INSTALL_DIR}/driver/"
 
-    # Build and install kernel module
     echo "==> Building kernel module..."
     make -C "${INSTALL_DIR}/driver"
 
     echo "==> Installing kernel module..."
     make -C "${INSTALL_DIR}/driver" install
 
-    # Copy TUI app
+    configure_non_root_access
+}
+
+install_app() {
+    mkdir -p "${INSTALL_DIR}/app"
+
     echo "==> Copying TUI app..."
     cp "${APP_DIR}/nitro_sense_tui.py" "${INSTALL_DIR}/app/nitro_sense_tui.py"
     chmod +x "${INSTALL_DIR}/app/nitro_sense_tui.py"
 
-    # Create nitros command symlink
     echo "==> Creating 'nitros' command..."
     mkdir -p "${BIN_DIR}"
     ln -sf "${INSTALL_DIR}/app/nitro_sense_tui.py" "${BIN_DIR}/nitros"
+}
 
-    configure_non_root_access
+uninstall_driver() {
+    if [ -d "${INSTALL_DIR}/driver" ]; then
+        echo "==> Uninstalling kernel module..."
+        make -C "${INSTALL_DIR}/driver" uninstall 2>/dev/null || true
+        rm -rf "${INSTALL_DIR}/driver"
+    fi
+
+    echo "==> Removing non-root access settings..."
+    cleanup_non_root_access
+}
+
+uninstall_app() {
+    echo "==> Removing 'nitros' command..."
+    rm -f "${BIN_DIR}/nitros"
+    rm -rf "${INSTALL_DIR}/app"
+}
+
+cmd_install() {
+    require_root "$@"
+
+    local component
+    component="$(component_name "${2:-all}")"
+
+    echo "==> Installing '${component}' to ${INSTALL_DIR}..."
+
+    case "${component}" in
+        all)
+            install_driver
+            install_app
+            ;;
+        driver)
+            install_driver
+            ;;
+        app)
+            install_app
+            ;;
+    esac
 
     echo ""
     echo "==> Installation complete!"
-    echo "    - Driver installed for kernel $(uname -r)"
-    echo "    - Load module: sudo modprobe nitro_sense"
-    echo "    - Run TUI: nitros"
+
+    if [ "${component}" = "all" ] || [ "${component}" = "driver" ]; then
+        echo "    - Driver installed for kernel $(uname -r)"
+        echo "    - Load module: sudo modprobe nitro_sense"
+    fi
+
+    if [ "${component}" = "all" ] || [ "${component}" = "app" ]; then
+        echo "    - Run TUI: nitros"
+    fi
 }
 
 cmd_uninstall() {
     require_root "$@"
 
-    echo "==> Uninstalling nitro-sense..."
+    local component
+    component="$(component_name "${2:-all}")"
 
-    # Uninstall kernel module
-    if [ -d "${INSTALL_DIR}/driver" ]; then
-        echo "==> Uninstalling kernel module..."
-        make -C "${INSTALL_DIR}/driver" uninstall 2>/dev/null || true
-    fi
+    echo "==> Uninstalling '${component}' from ${INSTALL_DIR}..."
 
-    # Remove nitros command
-    echo "==> Removing 'nitros' command..."
-    rm -f "${BIN_DIR}/nitros"
+    case "${component}" in
+        all)
+            uninstall_app
+            uninstall_driver
+            ;;
+        driver)
+            uninstall_driver
+            ;;
+        app)
+            uninstall_app
+            ;;
+    esac
 
-    echo "==> Removing non-root access settings..."
-    cleanup_non_root_access
-
-    # Remove install directory
-    echo "==> Removing ${INSTALL_DIR}..."
-    rm -rf "${INSTALL_DIR}"
+    cleanup_install_dir
 
     echo "==> Uninstallation complete."
-    echo "    You may need to unload the module: sudo rmmod nitro_sense"
+
+    if [ "${component}" = "all" ] || [ "${component}" = "driver" ]; then
+        echo "    You may need to unload the module: sudo rmmod nitro_sense"
+    fi
 }
 
 cmd_launch() {

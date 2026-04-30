@@ -5,7 +5,6 @@ import re
 from dataclasses import dataclass
 from typing import Callable, List, Optional, Tuple
 
-
 SYSFS_ROOT = "/sys/module/nitro_sense/drivers/platform:acer-wmi/acer-wmi"
 PROFILE_PATH = "/sys/firmware/acpi/platform_profile"
 PROFILE_CHOICES_PATH = "/sys/firmware/acpi/platform_profile_choices"
@@ -131,7 +130,9 @@ class ScreenUI:
         self.stdscr.attroff(curses.color_pair(3))
         self.stdscr.refresh()
         try:
-            value = self.stdscr.getstr(max_y - 2, min(len(prompt), max_x - 2), max_x - len(prompt) - 2)
+            value = self.stdscr.getstr(
+                max_y - 2, min(len(prompt), max_x - 2), max_x - len(prompt) - 2
+            )
         except Exception:
             value = b""
         curses.noecho()
@@ -239,7 +240,9 @@ class ScreenUI:
         settings.append(
             Setting(
                 label="Platform Profile",
-                read_cb=lambda: self.read_path(PROFILE_PATH if os.path.exists(PROFILE_PATH) else None),
+                read_cb=lambda: self.read_path(
+                    PROFILE_PATH if os.path.exists(PROFILE_PATH) else None
+                ),
                 apply_cb=lambda _ui: self.cycle_profile(),
                 hint="Cycle available ACPI profile",
             )
@@ -255,7 +258,9 @@ class ScreenUI:
                 )
             )
 
-        limiter = self.bool_setting("battery_limiter", "Battery Limiter", "Toggle 80% charge limiter")
+        limiter = self.bool_setting(
+            "battery_limiter", "Battery Limiter", "Toggle 80% charge limiter"
+        )
         if limiter:
             settings.append(limiter)
 
@@ -300,7 +305,7 @@ class ScreenUI:
         self.stdscr.erase()
         max_y, max_x = self.stdscr.getmaxyx()
 
-        title = "Nitro Sense - Flat TUI"
+        title = "Nitro Sense"
         subtitle = f"Model: {self.model_name}"
         self.stdscr.attron(curses.color_pair(2))
         self.stdscr.addstr(0, 0, title[: max_x - 1])
@@ -325,12 +330,18 @@ class ScreenUI:
             else:
                 self.stdscr.addstr(row, 0, line[: max_x - 1])
 
-        hint = self.settings[self.cursor].hint if self.settings else "No settings detected"
+        hint = (
+            self.settings[self.cursor].hint if self.settings else "No settings detected"
+        )
         self.stdscr.attron(curses.color_pair(3))
         self.stdscr.addstr(max_y - 3, 0, (hint + " " * max_x)[: max_x - 1])
         self.stdscr.addstr(max_y - 2, 0, (self.status + " " * max_x)[: max_x - 1])
         self.stdscr.attroff(curses.color_pair(3))
-        self.stdscr.addstr(max_y - 1, 0, "Up/Down: move  Enter: apply/edit  r: refresh  q: quit"[: max_x - 1])
+        self.stdscr.addstr(
+            max_y - 1,
+            0,
+            "Up/Down: move  Enter: apply/edit  r: refresh  q: quit"[: max_x - 1],
+        )
 
         self.stdscr.refresh()
 
