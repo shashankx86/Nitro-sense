@@ -1,0 +1,26 @@
+pkgname=nitro-sense-driver-dkms
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="DKMS package for Linuwu Sense based Acer Nitro/Predator driver"
+arch=('x86_64')
+url="https://github.com/0x7375646F/Linuwu-Sense"
+license=('GPL3')
+depends=('dkms')
+makedepends=()
+source=(
+  "Makefile"
+  "dkms.conf"
+  "src/linuwu_sense.c"
+  "LICENSE"
+)
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+package() {
+  local srcdir_dst="${pkgdir}/usr/src/linuwu-sense-${pkgver}"
+
+  install -d "${srcdir_dst}/src"
+  install -m 644 "${srcdir}/Makefile" "${srcdir_dst}/Makefile"
+  install -m 644 "${srcdir}/dkms.conf" "${srcdir_dst}/dkms.conf"
+  install -m 644 "${srcdir}/src/linuwu_sense.c" "${srcdir_dst}/src/linuwu_sense.c"
+  install -m 644 "${srcdir}/LICENSE" "${srcdir_dst}/LICENSE"
+}

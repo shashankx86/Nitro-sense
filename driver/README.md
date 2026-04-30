@@ -17,3 +17,9 @@ Clean build artifacts:
 ```bash
 make clean
 ```
+
+Build Arch Linux DKMS package:
+
+```bash
+makepkg -si
+```
