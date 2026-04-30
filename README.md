@@ -2,7 +2,7 @@
 
 Nitro Sense is a split project:
 
-- `driver/`: Linuwu Sense based kernel module source + DKMS packaging
+- `driver/`: Nitro Sense kernel module source + DKMS packaging
 - `app/`: minimal modern flat curses UI for controlling exposed sysfs nodes
 
 ## Arch Linux install
@@ -14,8 +14,8 @@ cd driver
 makepkg -si
 ```
 
-This installs DKMS sources under `/usr/src/linuwu-sense-<version>`.
-It also installs modprobe/modules-load snippets for `linuwu_sense`.
+This installs DKMS sources under `/usr/src/nitro-sense-<version>`.
+It also installs modprobe/modules-load snippets for `nitro_sense`.
 
 ### 2) Build/install the curses UI
 
@@ -27,7 +27,7 @@ makepkg -si
 ### 3) Load module
 
 ```bash
-sudo modprobe linuwu_sense
+sudo modprobe nitro_sense
 ```
 
 ## Run UI
