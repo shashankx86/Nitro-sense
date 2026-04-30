@@ -1,34 +1,34 @@
 pkgname=nitro-sense-driver-dkms
 pkgver=0.1.0
 pkgrel=1
-pkgdesc="DKMS package for Linuwu Sense based Acer Nitro/Predator driver"
+pkgdesc="DKMS package for Nitro Sense based Acer Nitro/Predator driver"
 arch=('x86_64')
-url="https://github.com/0x7375646F/Linuwu-Sense"
+url="https://github.com/0x7375646F/Nitro-Sense"
 license=('GPL3')
 depends=('dkms')
 makedepends=()
 source=(
   "Makefile"
   "dkms.conf"
-  "linuwu_sense.conf"
-  "linuwu_sense.modules-load"
-  "src/linuwu_sense.c"
+  "nitro_sense.conf"
+  "nitro_sense.modules-load"
+  "src/nitro_sense.c"
   "LICENSE"
 )
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
-  local srcdir_dst="${pkgdir}/usr/src/linuwu-sense-${pkgver}"
+  local srcdir_dst="${pkgdir}/usr/src/nitro-sense-${pkgver}"
 
   install -d "${srcdir_dst}/src"
   install -m 644 "${srcdir}/Makefile" "${srcdir_dst}/Makefile"
   install -m 644 "${srcdir}/dkms.conf" "${srcdir_dst}/dkms.conf"
-  install -m 644 "${srcdir}/src/linuwu_sense.c" "${srcdir_dst}/src/linuwu_sense.c"
+  install -m 644 "${srcdir}/src/nitro_sense.c" "${srcdir_dst}/src/nitro_sense.c"
   install -m 644 "${srcdir}/LICENSE" "${srcdir_dst}/LICENSE"
 
   install -d "${pkgdir}/usr/lib/modprobe.d"
-  install -m 644 "${srcdir}/linuwu_sense.conf" "${pkgdir}/usr/lib/modprobe.d/linuwu_sense.conf"
+  install -m 644 "${srcdir}/nitro_sense.conf" "${pkgdir}/usr/lib/modprobe.d/nitro_sense.conf"
 
   install -d "${pkgdir}/usr/lib/modules-load.d"
-  install -m 644 "${srcdir}/linuwu_sense.modules-load" "${pkgdir}/usr/lib/modules-load.d/linuwu_sense.conf"
+  install -m 644 "${srcdir}/nitro_sense.modules-load" "${pkgdir}/usr/lib/modules-load.d/nitro_sense.conf"
 }
