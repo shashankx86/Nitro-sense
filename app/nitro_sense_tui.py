@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Callable, List, Optional, Tuple
 
 
-SYSFS_ROOT = "/sys/module/linuwu_sense/drivers/platform:acer-wmi/acer-wmi"
+SYSFS_ROOT = "/sys/module/nitro_sense/drivers/platform:acer-wmi/acer-wmi"
 PROFILE_PATH = "/sys/firmware/acpi/platform_profile"
 PROFILE_CHOICES_PATH = "/sys/firmware/acpi/platform_profile_choices"
 
