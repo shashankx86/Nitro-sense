@@ -344,7 +344,7 @@ class ScreenUI:
         curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
 
         if not self.settings:
-            self.set_status("No supported sysfs nodes found. Is linuwu_sense loaded?")
+            self.set_status("No supported sysfs nodes found. Is nitro_sense loaded?")
 
         while True:
             self.draw()

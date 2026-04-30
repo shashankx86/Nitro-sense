@@ -1,6 +1,6 @@
 # Nitro Sense TUI
 
-Minimal flat curses UI for controlling supported `linuwu_sense` sysfs nodes.
+Minimal flat curses UI for controlling supported `nitro_sense` sysfs nodes.
 
 ## Run
 
