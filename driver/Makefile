@@ -13,10 +13,6 @@ KBUILD_TOOLCHAIN := LLVM=1
 endif
 endif
 
-ifneq ($(KERNELRELEASE),)
-obj-m := src/nitro_sense.o
-else
-
 all:
 	$(MAKE) -C $(KDIR) M=$(PWD) $(KBUILD_TOOLCHAIN) modules
 
@@ -38,5 +34,3 @@ uninstall:
 	rm -f /etc/modules-load.d/nitro_sense.conf
 	depmod -a $(KVER)
 	@echo "Module uninstalled for kernel $(KVER)"
-
-endif
