@@ -1,6 +1,6 @@
 pkgname=nitro-sense-driver-dkms
 pkgver=0.1.0
-pkgrel=3
+pkgrel=4
 pkgdesc="DKMS package for Nitro Sense based Acer Nitro/Predator driver"
 arch=('x86_64')
 url="https://github.com/0x7375646F/Nitro-Sense"

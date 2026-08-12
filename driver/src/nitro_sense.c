@@ -34,7 +34,11 @@
  #include <linux/hwmon.h>
  #include <linux/fs.h>
  #include <linux/units.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
  #include <linux/unaligned.h>
+#else
+ #include <asm-generic/unaligned.h>
+#endif
  #include <linux/bitfield.h>
  #include <linux/bitmap.h>
 
@@ -941,7 +945,7 @@ enum acer_wmi_predator_v4_oc {
      {}
  };
  
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 17, 0)
 static struct device *platform_profile_device;
 #else
 static bool platform_profile_handler_registered;
@@ -2324,7 +2328,7 @@ static bool platform_profile_support;
  
 static acpi_status battery_health_set(u8 function, u8 function_status);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 17, 0)
 static const struct platform_profile_ops acer_predator_v4_platform_profile_ops = {
     .probe = acer_predator_v4_platform_profile_probe,
     .profile_get = acer_predator_v4_platform_profile_get,
@@ -2345,12 +2349,9 @@ acer_predator_v4_handler_profile_set(struct platform_profile_handler *pprof,
     return acer_predator_v4_platform_profile_set(NULL, profile);
 }
 
-static unsigned long acer_predator_v4_profile_classes;
-
 static struct platform_profile_handler acer_predator_v4_platform_profile_handler = {
     .profile_get = acer_predator_v4_handler_profile_get,
     .profile_set = acer_predator_v4_handler_profile_set,
-    .classes = &acer_predator_v4_profile_classes,
 };
 #endif
  
@@ -2360,7 +2361,7 @@ static int acer_platform_profile_setup(struct platform_device *pdev)
     int delay_ms = 100;
     if (!quirks->predator_v4 && !quirks->nitro_sense && !quirks->nitro_v4)
         return 0;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 17, 0)
     for (int attempt = 1; attempt <= max_retries; attempt++) {
         platform_profile_device = devm_platform_profile_register(
             &pdev->dev, "acer-wmi", NULL, &acer_predator_v4_platform_profile_ops);
@@ -2377,21 +2378,22 @@ static int acer_platform_profile_setup(struct platform_device *pdev)
         }
     }
 #else
-    acer_predator_v4_profile_classes = 0;
-    acer_predator_v4_platform_profile_probe(NULL, &acer_predator_v4_profile_classes);
-    for (int attempt = 1; attempt <= max_retries; attempt++) {
-        int err = platform_profile_register(&acer_predator_v4_platform_profile_handler);
-        if (err == 0) {
-            platform_profile_handler_registered = true;
-            platform_profile_support = true;
-            pr_info("Platform profile registered successfully (attempt %d)\n", attempt);
-            return 0;
-        }
-        pr_warn("Platform profile registration failed (attempt %d/%d), error: %d\n",
-                attempt, max_retries, err);
-        if (attempt < max_retries) {
-            msleep(delay_ms);
-            delay_ms = min(delay_ms * 2, 1000);
+    if (!acer_predator_v4_platform_profile_probe(NULL,
+                     acer_predator_v4_platform_profile_handler.choices)) {
+        for (int attempt = 1; attempt <= max_retries; attempt++) {
+            int err = platform_profile_register(&acer_predator_v4_platform_profile_handler);
+            if (err == 0) {
+                platform_profile_handler_registered = true;
+                platform_profile_support = true;
+                pr_info("Platform profile registered successfully (attempt %d)\n", attempt);
+                return 0;
+            }
+            pr_warn("Platform profile registration failed (attempt %d/%d), error: %d\n",
+                    attempt, max_retries, err);
+            if (attempt < max_retries) {
+                msleep(delay_ms);
+                delay_ms = min(delay_ms * 2, 1000);
+            }
         }
     }
 #endif
@@ -2476,7 +2478,7 @@ static int acer_platform_profile_setup(struct platform_device *pdev)
          if (tp != acer_predator_v4_max_perf)
              last_non_turbo_profile = tp;
  
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 17, 0)
           platform_profile_notify(platform_profile_device);
 #else
           platform_profile_notify();
@@ -4214,7 +4216,11 @@ static int acer_platform_profile_setup(struct platform_device *pdev)
  }
  
  
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
  static void acer_platform_remove(struct platform_device *device)
+#else
+ static int acer_platform_remove(struct platform_device *device)
+#endif
  {
      if (has_cap(ACER_CAP_MAILLED))
          acer_led_exit();
@@ -4237,12 +4243,15 @@ static int acer_platform_profile_setup(struct platform_device *pdev)
         four_zone_kb_state_save();
     }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 17, 0)
     if (platform_profile_handler_registered)
-        platform_profile_unregister();
+        platform_profile_remove();
 #endif
 
     acer_rfkill_exit();
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 11, 0)
+    return 0;
+#endif
 }
  
  #ifdef CONFIG_PM_SLEEP
